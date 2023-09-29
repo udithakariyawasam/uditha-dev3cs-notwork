@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Custom Nginx Modules with Lua
 ### Version 1.18.0/3cs
 Contains All options from official nginx
@@ -109,3 +110,7 @@ Inside http {} block
     modsecurity_rules_file /etc/nginx/modsec/modsec-config.conf;
 	lua_package_path "/usr/local/lib/lua/?.lua;;";
 ```
+=======
+# uditha-dev3cs
+DevOps Practical Test
+>>>>>>> a6ed10a18777bb586f7e7eeea1b6242fcb8ffbd4

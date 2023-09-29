@@ -1,200 +1,186 @@
 
 <img src="https://github.com/SpiderLabs/ModSecurity/raw/v3/master/others/modsec.png" width="50%">
 
-[![Build Status](https://travis-ci.org/SpiderLabs/ModSecurity-nginx.svg?branch=master)](https://travis-ci.org/SpiderLabs/ModSecurity-nginx)
-[![](https://raw.githubusercontent.com/ZenHubIO/support/master/zenhub-badge.png)](https://zenhub.com)
+![Quality Assurance](https://github.com/SpiderLabs/ModSecurity/workflows/Quality%20Assurance/badge.svg)
+[![Build Status](https://sonarcloud.io/api/project_badges/measure?project=USHvY32Uy62L&metric=alert_status)](https://sonarcloud.io/dashboard?id=USHvY32Uy62L)
+[![](https://sonarcloud.io/api/project_badges/measure?project=USHvY32Uy62L&metric=sqale_rating
+)](https://sonarcloud.io/dashboard?id=USHvY32Uy62L)
+[![](https://sonarcloud.io/api/project_badges/measure?project=USHvY32Uy62L&metric=reliability_rating
+)](https://sonarcloud.io/dashboard?id=USHvY32Uy62L)
+[![](https://sonarcloud.io/api/project_badges/measure?project=USHvY32Uy62L&metric=security_rating
+)](https://sonarcloud.io/dashboard?id=USHvY32Uy62L)
+[![](https://sonarcloud.io/api/project_badges/measure?project=USHvY32Uy62L&metric=vulnerabilities
+)](https://sonarcloud.io/dashboard?id=USHvY32Uy62L)
 
 
-The ModSecurity-nginx connector is the connection point between nginx and libmodsecurity (ModSecurity v3). Said another way, this project provides a communication channel between nginx and libmodsecurity. This connector is required to use LibModSecurity with nginx. 
 
-The ModSecurity-nginx connector takes the form of an nginx module. The module simply serves as a layer of communication between nginx and ModSecurity.
+Libmodsecurity is one component of the ModSecurity v3 project. The library
+codebase serves as an interface to ModSecurity Connectors taking in web traffic
+and applying traditional ModSecurity processing. In general, it provides the
+capability to load/interpret rules written in the ModSecurity SecRules format
+and apply them to HTTP content provided by your application via Connectors.
 
-Notice that this project depends on libmodsecurity rather than ModSecurity (version 2.9 or less).
+If you are looking for ModSecurity for Apache (aka ModSecurity v2.x), it is still under maintenance and available:
+[here](https://github.com/SpiderLabs/ModSecurity/tree/v2/master).
 
-### What is the difference between this project and the old ModSecurity add-on for nginx?
+### What is the difference between this project and the old ModSecurity (v2.x.x)?
 
-The old version uses ModSecurity standalone, which is a wrapper for
-Apache internals to link ModSecurity to nginx. This current version is closer
-to nginx, consuming the new libmodsecurity which is no longer dependent on
-Apache. As a result, this current version has less dependencies, fewer bugs, and is faster. In addition, some new functionality is also provided - such as the possibility of use of global rules configuration with per directory/location customizations (e.g. SecRuleRemoveById).
+* All Apache dependencies have been removed
+* Higher performance
+* New features
+* New architecture
 
+Libmodsecurity is a complete rewrite of the ModSecurity platform. When it was first devised the ModSecurity project started as just an Apache module. Over time the project has been extended, due to popular demand, to support other platforms including (but not limited to) Nginx and IIS. In order to provide for the growing demand for additional platform support, it has became necessary to remove the Apache dependencies underlying this project, making it more platform independent.
+
+As a result of this goal we have rearchitected Libmodsecurity such that it is no longer dependent on the Apache web server (both at compilation and during runtime). One side effect of this is that across all platforms users can expect increased performance. Additionally, we have taken this opportunity to lay the groundwork for some new features that users have been long seeking. For example we are looking to natively support auditlogs in the JSON format, along with a host of other functionality in future versions.
+
+
+### It is no longer just a module.
+
+The 'ModSecurity' branch no longer contains the traditional module logic (for Nginx, Apache, and IIS) that has traditionally been packaged all together. Instead, this branch only contains the library portion (libmodsecurity) for this project. This library is consumed by what we have termed 'Connectors' these connectors will interface with your webserver and provide the library with a common format that it understands. Each of these connectors is maintained as a separate GitHub project. For instance, the Nginx connector is supplied by the ModSecurity-nginx project (https://github.com/SpiderLabs/ModSecurity-nginx).
+
+Keeping these connectors separated allows each project to have different release cycles, issues and development trees. Additionally, it means that when you install ModSecurity v3 you only get exactly what you need, no extras you won't be using.
 
 # Compilation
 
-Before compile this software make sure that you have libmodsecurity installed.
-You can download it from the [ModSecurity git repository](https://github.com/SpiderLabs/ModSecurity). For information pertaining to the compilation and installation of libmodsecurity please consult the documentation provided along with it.
+Before starting the compilation process, make sure that you have all the
+dependencies in place. Read the subsection “Dependencies”  for further
+information.
 
-With libmodsecurity installed, you can proceed with the installation of the ModSecurity-nginx connector, which follows the nginx third-party module installation procedure. From the nginx source directory:
+After the compilation make sure that there are no issues on your
+build/platform. We strongly recommend the utilization of the unit tests and
+regression tests. These test utilities are located under the subfolder ‘tests’.
 
+As a dynamic library, don’t forget that libmodsecurity must be installed to a location (folder) where you OS will be looking for dynamic libraries.
+
+
+
+### Unix (Linux, MacOS, FreeBSD, …)
+
+On unix the project uses autotools to help the compilation process.
+
+```shell
+$ ./build.sh
+$ ./configure
+$ make
+$ sudo make install
 ```
-./configure --add-module=/path/to/ModSecurity-nginx
-```
 
-Or, to build a dynamic module:
+Details on distribution specific builds can be found in our Wiki:
+[Compilation Recipes](https://github.com/SpiderLabs/ModSecurity/wiki/Compilation-recipes)
 
-```
-./configure --add-dynamic-module=/path/to/ModSecurity-nginx --with-compat
-```
+### Windows
 
-Note that when building a dynamic module, your nginx source version
-needs to match the version of nginx you're compiling this for.
-
-Further information about nginx third-party add-ons support are available here:
-http://wiki.nginx.org/3rdPartyModules
+Windows build is not ready yet.
 
 
-# Usage
+## Dependencies
 
-ModSecurity for nginx extends your nginx configuration directives.
-It adds four new directives and they are:
+This library is written in C++ using the C++11 standards. It also uses Flex
+and Yacc to produce the “Sec Rules Language” parser. Other, mandatory dependencies include YAJL, as ModSecurity uses JSON for producing logs and its testing framework, libpcre (not yet mandatory) for processing regular expressions in SecRules, and libXML2 (not yet mandatory) which is used for parsing XML requests.
 
-modsecurity
------------
-**syntax:** *modsecurity on | off*
+All others dependencies are related to operators specified within SecRules or configuration directives and may not be required for compilation. A short list of such dependencies is as follows:
 
-**context:** *http, server, location*
+* libinjection is needed for the operator @detectXSS and @detectSQL
+* curl is needed for the directive SecRemoteRules.
 
-**default:** *off*
+If those libraries are missing ModSecurity will be compiled without the support for the operator @detectXSS and the configuration directive SecRemoteRules.
 
-Turns on or off ModSecurity functionality.
-Note that this configuration directive is no longer related to the SecRule state.
-Instead, it now serves solely as an nginx flag to enable or disable the module.
+# Library documentation
 
-modsecurity_rules_file
-----------------------
-**syntax:** *modsecurity_rules_file &lt;path to rules file&gt;*
+The library documentation is written within the code in Doxygen format. To generate this documentation, please use the doxygen utility with the provided configuration file, “doxygen.cfg”, located with the "doc/" subfolder. This will generate HTML formatted documentation including usage examples.
 
-**context:** *http, server, location*
+# Library utilization
 
-**default:** *no*
+The library provides a C++ and C interface. Some resources are currently only
+available via the C++ interface, for instance, the capability to create custom logging
+mechanism (see the regression test to check for how those logging mechanism works).
+The objective is to have both APIs (C, C++) providing the same functionality,
+if you find an aspect of the API that is missing via a particular interface, please open an issue.
 
-Specifies the location of the modsecurity configuration file, e.g.:
+Inside the subfolder examples, there are simple examples on how to use the API.
+Below some are illustrated:
 
-```nginx
-server {
-    modsecurity on;
-    location / {
-        root /var/www/html;
-        modsecurity_rules_file /etc/my_modsecurity_rules.conf;
-    }
+###  Simple example using C++
+
+```c++
+using ModSecurity::ModSecurity;
+using ModSecurity::Rules;
+using ModSecurity::Transaction;
+
+ModSecurity *modsec;
+ModSecurity::Rules *rules;
+
+modsec = new ModSecurity();
+
+rules = new Rules();
+
+rules->loadFromUri(rules_file);
+
+Transaction *modsecTransaction = new Transaction(modsec, rules);
+
+modsecTransaction->processConnection("127.0.0.1");
+if (modsecTransaction->intervention()) {
+   std::cout << "There is an intervention" << std::endl;
 }
 ```
 
-modsecurity_rules_remote
-------------------------
-**syntax:** *modsecurity_rules_remote &lt;key&gt; &lt;URL to rules&gt;*
+### Simple example using C
 
-**context:** *http, server, location*
+```c
+#include "modsecurity/modsecurity.h"
+#include "modsecurity/transaction.h"
 
-**default:** *no*
 
-Specifies from where (on the internet) a modsecurity configuration file will be downloaded.
-It also specifies the key that will be used to authenticate to that server:
+char main_rule_uri[] = "basic_rules.conf";
 
-```nginx
-server {
-    modsecurity on;
-    location / {
-        root /var/www/html;
-        modsecurity_rules_remote my-server-key https://my-own-server/rules/download;
-    }
+int main (int argc, char **argv)
+{
+    ModSecurity *modsec = NULL;
+    Transaction *transaction = NULL;
+    Rules *rules = NULL;
+
+    modsec = msc_init();
+
+    rules = msc_create_rules_set();
+    msc_rules_add_file(rules, main_rule_uri);
+
+    transaction = msc_new_transaction(modsec, rules);
+
+    msc_process_connection(transaction, "127.0.0.1");
+    msc_process_uri(transaction, "http://www.modsecurity.org/test?key1=value1&key2=value2&key3=value3&test=args&test=test");
+    msc_process_request_headers(transaction);
+    msc_process_request_body(transaction);
+    msc_process_response_headers(transaction);
+    msc_process_response_body(transaction);
+
+    return 0;
 }
+
 ```
-
-modsecurity_rules
------------------
-**syntax:** *modsecurity_rules &lt;modsecurity rule&gt;*
-
-**context:** *http, server, location*
-
-**default:** *no*
-
-Allows for the direct inclusion of a ModSecurity rule into the nginx configuration.
-The following example is loading rules from a file and injecting specific configurations per directory/alias:
-
-```nginx
-server {
-    modsecurity on;
-    location / {
-        root /var/www/html;
-        modsecurity_rules_file /etc/my_modsecurity_rules.conf;
-    }
-    location /ops {
-        root /var/www/html/opts;
-        modsecurity_rules '
-          SecRuleEngine On
-          SecDebugLog /tmp/modsec_debug.log
-          SecDebugLogLevel 9
-          SecRuleRemoveById 10
-        ';
-    }
-}
-```
-
-modsecurity_transaction_id
---------------------------
-**syntax:** *modsecurity_transaction_id string*
-
-**context:** *http, server, location*
-
-**default:** *no*
-
-Allows to pass transaction ID from nginx instead of generating it in the library.
-This can be useful for tracing purposes, e.g. consider this configuration:
-
-```nginx
-log_format extended '$remote_addr - $remote_user [$time_local] '
-                    '"$request" $status $body_bytes_sent '
-                    '"$http_referer" "$http_user_agent" $request_id';
-
-server {
-    server_name host1;
-    modsecurity on;
-    modsecurity_transaction_id "host1-$request_id";
-    access_log logs/host1-access.log extended;
-    error_log logs/host1-error.log;
-    location / {
-        ...
-    }
-}
-
-server {
-    server_name host2;
-    modsecurity on;
-    modsecurity_transaction_id "host2-$request_id";
-    access_log logs/host2-access.log extended;
-    error_log logs/host2-error.log;
-    location / {
-        ...
-    }
-}
-```
-
-Using a combination of log_format and modsecurity_transaction_id you will
-be able to find correlations between access log and error log entries
-using the same unique identificator.
-
-String can contain variables.
-
 
 # Contributing
 
-As an open source project we invite (and encourage) anyone from the community to contribute to our project. This may take the form of: new
-functionality, bug fixes, bug reports, beginners user support, and anything else that you
-are willing to help with. Thank you.
+You are more than welcome to contribute to this project and look forward to growing the community around this new version of ModSecurity. Areas of interest include: New
+functionalities, fixes, bug report, support for beginning users, or anything that you
+are willing to help with.
 
-
-## Providing Patches
+## Providing patches
 
 We prefer to have your patch within the GitHub infrastructure to facilitate our
-review work, and our QA integration. GitHub provides an excellent
-documentation on how to perform “Pull Requests”. More information available
+review work, and our Q.A. integration. GitHub provides excellent
+documentation on how to perform “Pull Requests”, more information available
 here: https://help.github.com/articles/using-pull-requests/
 
-Please respect the coding style in use. Pull requests can include various commits, so
-provide one fix or one functionality per commit. Do not change anything outside
+Please respect the coding style. Pull requests can include various commits, so
+provide one fix or one piece of functionality per commit. Please do not change anything outside
 the scope of your target work (e.g. coding style in a function that you have
-passed by). 
+passed by). For further information about the coding style used in this
+project, please check: https://www.chromium.org/blink/coding-style
+
+Provides explanative commit messages. Your first line should  give the highlights of your
+patch, 3rd and on give a more detailed explanation/technical details about your
+patch. Patch explanation is valuable during the review process.
 
 ### Don’t know where to start?
 
@@ -206,61 +192,85 @@ $ cd /path/to/modsecurity-nginx
 $ egrep -Rin "TODO|FIXME" -R *
 ```
 
-You may also take a look at recent bug reports and open issues to get an idea of what kind of help we are looking for.
+A TODO list is also available as part of the Doxygen documentation.
 
 ### Testing your patch
 
-Along with the manual testing, we strongly recommend that you to use the nginx test
-utility to make sure that you patch does not adversely affect the behavior or performance of nginx. 
+Along with the manual testing, we strongly recommend you to use the our
+regression tests and unit tests. If you have implemented an operator, don’t
+forget to create unit tests for it. If you implement anything else, it is encouraged that you develop complimentary regression tests for it.
 
-The nginx tests are available on: http://hg.nginx.org/nginx-tests/ 
+The regression test and unit test utilities are native and do not demand any
+external tool or script, although you need to fetch the test cases from other
+repositories, as they are shared with other versions of ModSecurity, those
+others repositories git submodules. To fetch the submodules repository and run
+the utilities, follow the commands listed below:
 
-To use those tests, make sure you have the Perl utility prove (part of Perl 5)
-and proceed with the following commands:
+```shell
+$ cd /path/to/your/ModSecurity
+$ git submodule foreach git pull
+$ cd test
+$ ./regression-tests
+$ ./unit-tests
+ ```
 
+### Debugging
+
+
+Before start the debugging process, make sure of where your bug is. The problem
+could be on your connector or in libmodsecurity. In order to identify where the
+bug is, it is recommended that you develop a regression test that mimics the
+scenario where the bug is happening. If the bug is reproducible with the
+regression-test utility, then it will be far simpler to debug and ensure that it never occurs again. On Linux it is
+recommended that anyone undertaking debugging utilize gdb and/or valgrind as needed.
+
+During the configuration/compilation time, you may want to disable the compiler
+optimization making your “back traces” populated with readable data. Use the
+CFLAGS to disable the compilation optimization parameters:
+
+```shell
+$ export CFLAGS="-g -O0"
+$ ./build.sh
+$ ./configure
+$ make
+$ sudo make install
 ```
-$ cp /path/to/ModSecurity-nginx/tests/* /path/to/nginx/test/repository
-$ cd /path/to/nginx/test/repository
-$ TEST_NGINX_BINARY=/path/to/your/nginx prove .
-```
-
-If you are facing problems getting your added functionality to pass all the nginx tests, feel free to contact us or the nginx mailing list at: http://nginx.org/en/support.html
-
-### Debugging 
-
-We respect the nginx debugging schema. By using the configuration option
-"--with-debug" during the nginx configuration you will also be enabling the
-connector's debug messages. Core dumps and crashes are expected to be debugged
-in the same fashion that is used to debug nginx. For further information,
-please check the nginx debugging information: http://wiki.nginx.org/Debugging
 
 
 ## Reporting Issues
 
-If you are facing a configuration issue or if something is not working as you
-expect it to be, please use ModSecurity user’s mailing list. Issues on GitHub
-are also welcome, but we prefer to have users question on the mailing list first,
-where you can reach an entire community. Also don’t forget to look for an
-existing issue before opening a new one.
+If you are facing a configuration issue or something is not working as you
+expected to be, please use the ModSecurity user’s mailing list. Issues on GitHub
+are also welcomed, but we prefer to have user ask questions on the mailing list first so that you can reach an entire community. Also don’t forget to look for existing issues before open a new one.
 
-Lastly, If you are planning to open an issue on GitHub, please don’t forget to tell us the
-version of your libmodsecurity and the version of the nginx connector you are running.
+If you are going to open a new issue on GitHub, don’t forget to tell us the
+version of your libmodsecurity and the version of a specific connector if there
+is one.
+
 
 ### Security issue
 
-Please do not publicly report any security issue. Instead, contact us at:
-security@modsecurity.org to report the issue. Once the problem is fixed we will provide you with credit for the discovery.
+Please do not make public any security issue. Contact us at:
+security@modsecurity.org reporting the issue. Once the problem is fixed your
+credit will be given.
 
+## Feature request
 
-## Feature Request
+We are open to discussing any new feature request with the community via the mailing lists. You can alternativly,
+feel free to open GitHub issues requesting new features. Before opening a
+new issue, please check if there is one already opened on the same topic.
 
-We would love to discuss any ideas that you may have for a new feature. Please keep in mind this is a community driven project so be sure to contact the community via the mailing list to get feedback first. Alternatively,
-feel free to open GitHub issues requesting for new features. Before opening a new issue, please check if there is an existing feature request for the desired functionality.
+## Bindings
 
+The libModSecurity design allows the integration with bindings. There is an effort to avoid breaking API [binary] compatibility to make an easy integration with possible bindings. Currently, there are two notable projects maintained by the community:
+   * Python - https://github.com/actions-security/pymodsecurity
+   * Varnish - https://github.com/xdecock/vmod-modsecurity
 
 ## Packaging
 
-Having our packages in distros on time is something we highly desire. Let us know if
-there is anything we can do to facilitate your work as a packager.
+Having our packages in distros on time is a desire that we have, so let us know
+if there is anything we can do to facilitate your work as a packager.
 
+## Sponsor Note
 
+Development of ModSecurity is sponsored by Trustwave. Sponsorship will end July 1, 2024. Additional information can be found here https://www.trustwave.com/en-us/resources/security-resources/software-updates/end-of-sale-and-trustwave-support-for-modsecurity-web-application-firewall/
